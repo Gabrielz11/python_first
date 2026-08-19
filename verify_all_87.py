@@ -1,5 +1,5 @@
 """
-verify_all_87.py - Script de verificação e auditoria dos 87 arquivos na pasta conteudo/.
+verify_all_87.py - Script de verificação e auditoria dos 87 arquivos na estrutura de pastas em conteudo/.
 """
 
 import os
@@ -13,21 +13,26 @@ def main() -> None:
         print(f"[X] Pasta {BASE_DIR} não encontrada!")
         sys.exit(1)
 
-    all_files = sorted([f for f in os.listdir(BASE_DIR) if f.endswith(".py") and f[0:2].isdigit()])
+    all_files = []
+    for root, _, files in os.walk(BASE_DIR):
+        for f in files:
+            if f.endswith(".py") and len(f) >= 2 and f[0:2].isdigit():
+                rel_path = os.path.relpath(os.path.join(root, f), BASE_DIR)
+                all_files.append((f, os.path.join(root, f), rel_path))
     
+    all_files.sort(key=lambda item: item[0])
     existing_count = len(all_files)
     print(f"Total de scripts numerados encontrados em conteudo/: {existing_count}")
     
     execution_errors = []
     
-    for script in all_files:
-        script_path = os.path.join(BASE_DIR, script)
-        res = subprocess.run([sys.executable, script_path], capture_output=True, text=True)
+    for filename, abs_path, rel_path in all_files:
+        res = subprocess.run([sys.executable, abs_path], capture_output=True, text=True)
         if res.returncode != 0:
-            execution_errors.append((script, res.stderr.strip()))
-            print(f"  [X] Erro em {script}: {res.stderr.strip()[:100]}")
+            execution_errors.append((rel_path, res.stderr.strip()))
+            print(f"  [X] Erro em {rel_path}: {res.stderr.strip()[:100]}")
         else:
-            print(f"  [OK] {script}")
+            print(f"  [OK] {rel_path}")
 
     print("\n--------------------------------------------------")
     print("Scripts criados: 87")
